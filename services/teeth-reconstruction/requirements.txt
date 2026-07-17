@@ -1,0 +1,12 @@
+flask>=3.0.0
+flask-cors>=4.0.0
+numpy>=1.26.0
+opencv-python-headless>=4.9.0
+scipy>=1.11.0
+trimesh>=4.0.0
+shapely>=2.0.0
+mapbox-earcut>=1.0.0
+Pillow>=10.0.0
+# MobileSAM via Ultralytics (Apache-2.0). Pulls torch (CPU build is fine).
+# Weights (mobile_sam.pt) are auto-downloaded by ultralytics on first run.
+ultralytics>=8.3.0

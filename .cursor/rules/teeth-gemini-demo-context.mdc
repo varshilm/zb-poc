@@ -1,0 +1,23 @@
+---
+description: Architecture and implementation context for the Teeth Gemini Demo
+globs: teeth-gemini-demo/**
+alwaysApply: false
+---
+
+# Teeth Gemini Demo Context
+
+- This React 19 + Vite + TypeScript POC has two independent tabs in `src/App.tsx`: Teeth Preview and Jaw Fit Scan. There is no router or persisted session.
+- Teeth Preview is orchestrated by `GeminiTeethDemoPage`: capture → crop → adjust → results. Preserve the manual color-mask fallback.
+- `DEMO_TEETH_SEGMENT_PROVIDER` in `src/constants/demoConfig.ts` selects OpenAI (default) or Gemini at compile time; the UI does not select providers.
+- Provider implementations live in `src/api/*TeethSegment.ts`; UI code should use the normalized `teethSegmentation.ts` adapter and its error codes.
+- Results parse the returned mask locally: connected color regions become simplified contours, upper/lower IDs, a numbered canvas preview, and a Three.js extrusion.
+- The mounted 3D Teeth Preview is an illustrative extrusion from 2D mask contours, not a clinical or anatomically inferred reconstruction.
+- `src/api/teethReconstruct.ts` is optional service scaffolding and is not currently called by the mounted results flow.
+- Jaw Fit Scan runs MediaPipe Face Landmarker in-browser, calibrates pixels using iris diameter with average IPD fallback, and estimates measurements from landmarks.
+- Jaw sizing is approximate and cannot recover depth from one frontal photo; keep accuracy warnings visible.
+- `TeethModeling/` and `DentalSimulation/` are shared utility areas, not routes.
+- Browser code handles photos as files/data URLs/canvas pixels. Never treat `VITE_*` API keys as production-safe secrets.
+- When adding env variables, update `.env.example`, `src/vite-env.d.ts`, and `README.md` together.
+- Keep page components focused on flow/UI; put provider, image, measurement, and geometry logic in APIs, hooks, or existing utility modules.
+- Validate changes with `npm run typecheck`, `npm test`, and the relevant mobile camera/upload flow.
+- See `teeth-gemini-demo/README.md` and `docs/pipeline-overview.md` for detailed flows and trade-offs.
