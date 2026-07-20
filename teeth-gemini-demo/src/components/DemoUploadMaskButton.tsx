@@ -1,7 +1,8 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import { ImageIcon, Upload } from 'lucide-react';
+import { ImageIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { AppLoader } from '@/components/AppLoader';
 import { cn } from '@/lib/utils';
 import { loadImageFromFile } from '@/pages/DentalSimulation/utils/loadImage';
 
@@ -61,7 +62,7 @@ export function DemoUploadMaskButton({
         onClick={() => inputRef.current?.click()}
       >
         {isLoading ? (
-          <Upload className="size-4 animate-pulse" />
+          <AppLoader size="sm" />
         ) : (
           <ImageIcon className="size-4" />
         )}

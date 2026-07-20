@@ -11,6 +11,7 @@ import {
 import { getRecommendedSet, getToothbrushSize } from '@/utils/jawMeasurements';
 
 import { BottomNav, type MainTab } from './BottomNav';
+import { AppLoader } from './AppLoader';
 
 type ProgressScreenProps = {
   onOpenHome: () => void;
@@ -70,7 +71,9 @@ export function ProgressScreen({
         </p>
 
         {!loaded ? (
-          <p className="mt-8 text-sm text-brand-sky">Loading saved results…</p>
+          <div className="mt-10 flex justify-center py-6">
+            <AppLoader size="md" label="Loading saved results…" centered />
+          </div>
         ) : null}
 
         {empty ? (

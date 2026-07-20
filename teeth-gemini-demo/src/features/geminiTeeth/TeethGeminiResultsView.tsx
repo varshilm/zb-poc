@@ -1,5 +1,4 @@
-import { LoaderCircle } from 'lucide-react';
-
+import { AppLoader } from '@/components/AppLoader';
 import { cn } from '@/lib/utils';
 import type { ColorMaskSeparationResult } from '@/pages/TeethModeling/utils/colorMaskSeparation';
 
@@ -37,8 +36,8 @@ export function TeethGeminiResultsView({
   return (
     <div className={cn('flex flex-col gap-4', className)}>
       {statusMessage ? (
-        <div className="flex items-center gap-2 text-sm text-slate-600">
-          {isProcessing ? <LoaderCircle className="size-4 animate-spin" /> : null}
+        <div className="flex items-center gap-3 text-sm text-slate-600">
+          {isProcessing ? <AppLoader size="sm" /> : null}
           {statusMessage}
         </div>
       ) : null}

@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 
 import splashMark from '@/assets/landingasset.svg';
 
+import { AppLoader } from './AppLoader';
+
 type SplashScreenProps = {
   onComplete: () => void;
   durationMs?: number;
@@ -15,7 +17,7 @@ export function SplashScreen({ onComplete, durationMs = 1500 }: SplashScreenProp
 
   return (
     <main
-      className="flex h-full min-h-0 items-center justify-center bg-brand-canvas"
+      className="flex h-full min-h-0 flex-col items-center justify-center gap-8 bg-brand-canvas"
       aria-label="ZeroBrush is loading"
     >
       <img
@@ -23,6 +25,7 @@ export function SplashScreen({ onComplete, durationMs = 1500 }: SplashScreenProp
         alt="ZeroBrush"
         className="splash-mark h-auto w-[102px]"
       />
+      <AppLoader size="md" variant="light" />
     </main>
   );
 }

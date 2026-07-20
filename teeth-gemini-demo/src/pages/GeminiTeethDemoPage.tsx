@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 import { BottomNav, type MainTab } from '@/components/BottomNav';
-import { Button } from '@/components/ui/button';
+import { AppLoader } from '@/components/AppLoader';
 import { cn } from '@/lib/utils';
 import { DEBUG_ENABLED } from '@/config/debug';
 import { getTeethCache } from '@/storage/demoCache';
@@ -106,30 +106,6 @@ export function GeminiTeethDemoPage({
 
   const currentStep = STEPS[stepIndex];
   const showMainNav = Boolean(onSelectTab && onOpenScan);
-  const isResults = currentStep === 'Results';
-
-  const canGoBack = stepIndex > 0;
-  const canGoNext =
-    (currentStep === 'Capture' && Boolean(captureUrl)) ||
-    (currentStep === 'Crop' && Boolean(croppedUrl)) ||
-    (currentStep === 'Adjust' && Boolean(adjustedFile));
-
-  const goBack = () => {
-    // Results back exits to home (same as header). Other steps step backward.
-    if (isResults) {
-      onExit?.();
-      return;
-    }
-    if (canGoBack) {
-      setStepIndex((index) => index - 1);
-    }
-  };
-
-  const goNext = () => {
-    if (stepIndex < STEPS.length - 1 && canGoNext) {
-      setStepIndex((index) => index + 1);
-    }
-  };
 
   const resetForNewCapture = () => {
     setCroppedUrl(null);
@@ -154,12 +130,16 @@ export function GeminiTeethDemoPage({
   ) : null;
 
   if (!cacheChecked) {
-    return <div className="h-full min-h-0 bg-brand-canvas" />;
+    return (
+      <div className="flex h-full min-h-0 items-center justify-center bg-brand-canvas">
+        <AppLoader size="lg" label="Restoring your last scan…" centered />
+      </div>
+    );
   }
 
   if (currentStep === 'Capture') {
     return (
-      <div className="relative h-full min-h-0">
+      <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
         <DemoPhotoCapture
           scanKind="teeth"
           debugEnabled={DEBUG_ENABLED}
@@ -236,7 +216,7 @@ export function GeminiTeethDemoPage({
       <main
         className={cn(
           'min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 pt-4',
-          showMainNav ? (isResults ? 'app-nav-clearance' : 'pb-44') : 'pb-28',
+          showMainNav ? 'app-nav-clearance' : 'pb-28',
         )}
       >
         <div className="rounded-[24px] border border-[#e0e7e9] bg-white p-4 shadow-[0_10px_32px_rgba(33,64,96,0.08)]">
@@ -281,37 +261,6 @@ export function GeminiTeethDemoPage({
         </div>
       </main>
 
-      {/* Step footer only for Crop/Adjust — Results uses in-content Scan again + header back. */}
-      {!isResults ? (
-        <footer
-          className={cn(
-            'absolute inset-x-0 border-t border-[#dde5e7] bg-white/95 px-5 pt-3 backdrop-blur',
-            showMainNav ? 'bottom-[4.75rem]' : 'app-safe-bottom bottom-0',
-          )}
-        >
-          <div className="flex gap-3 pb-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-12 flex-1 rounded-full border-[#cad8db] text-brand-navy"
-              disabled={!canGoBack}
-              onClick={goBack}
-            >
-              <ChevronLeft className="size-4" />
-              Back
-            </Button>
-            <Button
-              type="button"
-              className="min-h-12 flex-1 rounded-full bg-brand-teal text-white hover:bg-[#00565d]"
-              disabled={!canGoNext}
-              onClick={goNext}
-            >
-              Next
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-        </footer>
-      ) : null}
       {nav}
     </div>
   );

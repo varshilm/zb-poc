@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { AppShell } from '@/components/AppShell';
+import { AppLoader } from '@/components/AppLoader';
 import { SplashScreen } from '@/components/SplashScreen';
 import { getFaceCache } from '@/storage/demoCache';
 import { useDemoSession } from '@/session/DemoSessionContext';
@@ -46,7 +47,18 @@ const JawFitScanPage = lazy(() =>
 );
 
 function RouteFallback() {
-  return <div className="h-full min-h-0 bg-brand-canvas" />;
+  return (
+    <div className="flex h-full min-h-0 items-center justify-center bg-brand-canvas p-6">
+      <div className="flex w-full max-w-[280px] flex-col gap-3">
+        <div className="app-skeleton-block h-36 rounded-[22px]" />
+        <div className="app-skeleton-block h-3 w-[80%] rounded-lg" />
+        <div className="app-skeleton-block h-3 w-[60%] rounded-lg" />
+        <div className="flex justify-center pt-2">
+          <AppLoader size="md" label="Loading…" centered />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function AppLayout() {

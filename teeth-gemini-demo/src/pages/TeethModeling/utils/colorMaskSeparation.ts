@@ -44,11 +44,13 @@ const DEFAULT_BACKGROUND_THRESHOLD = 44;
 const DEFAULT_SIMPLIFY_TOLERANCE = 2.2;
 const DEFAULT_MAX_POLYGON_VERTICES = 40;
 const DEFAULT_MAX_TEETH_PER_ARCH = 16;
-const MAX_GUMS = 2;
 
-/** Reserved gum color (magenta) — the prompt instructs gums to use exactly this. */
+/** Reserved gum color (magenta) — preferred by the segmentation prompt. */
 export const GUM_COLOR: RgbColor = { r: 255, g: 0, b: 255 };
-const GUM_MATCH_DISTANCE_SQ = 130 * 130;
+/** Near-#FF00FF tolerance for prompt-compliant masks. */
+const GUM_EXACT_DISTANCE_SQ = 90 * 90;
+/** Minimum share of gum-like pixels required to classify a region as gingiva. */
+const GUM_PIXEL_RATIO = 0.4;
 
 function colorKey(color: RgbColor): string {
   return `${color.r},${color.g},${color.b}`;
@@ -58,12 +60,83 @@ function isBackgroundPixel(r: number, g: number, b: number, threshold: number): 
   return r <= threshold && g <= threshold && b <= threshold;
 }
 
-/** True when a color is close to the reserved magenta gum color. */
+/**
+ * Gum vs tooth color classifier.
+ *
+ * Real Gemini masks often paint gums as hot pink / rose (e.g. ~221,40,117),
+ * not pure #FF00FF. Teeth may use purple (blue-dominant) or brown/orange (low blue).
+ *
+ * Concrete rules:
+ * 1. Near #FF00FF → gum (prompt-compliant)
+ * 2. Hot-pink signature → gum: high R, subdued G, moderate B, R ≥ B
+ * 3. Blue-dominant → purple tooth (not gum)
+ * 4. Low blue → brown / orange / yellow tooth (not gum)
+ */
 export function isGumColor(r: number, g: number, b: number): boolean {
+  if (isBackgroundPixel(r, g, b, DEFAULT_BACKGROUND_THRESHOLD)) return false;
+
   const dr = r - GUM_COLOR.r;
   const dg = g - GUM_COLOR.g;
   const db = b - GUM_COLOR.b;
-  return dr * dr + dg * dg + db * db <= GUM_MATCH_DISTANCE_SQ;
+  // Near #FF00FF, but exclude blue-heavy purples that happen to sit near magenta in RGB space.
+  if (dr * dr + dg * dg + db * db <= GUM_EXACT_DISTANCE_SQ && b <= r + 20) {
+    return true;
+  }
+
+  // Purple / violet teeth: blue clearly dominates red.
+  if (b > r + 15) return false;
+
+  // Brown / orange / yellow teeth: blue is too weak for pink gums.
+  if (b < 85) return false;
+
+  // Hot-pink / rose gums: strong red, green well below red, blue between green and red.
+  if (r < 160) return false;
+  if (g > r * 0.55) return false;
+  if (g >= b) return false;
+  if (r - g < 55) return false;
+
+  return true;
+}
+
+function countGumPixels(
+  pixels: Point2D[],
+  data: Uint8ClampedArray,
+  width: number,
+): number {
+  let gumCount = 0;
+  for (const point of pixels) {
+    const pixel = readPixel(data, width, point.x, point.y);
+    if (isGumColor(pixel.r, pixel.g, pixel.b)) gumCount += 1;
+  }
+  return gumCount;
+}
+
+function classifyMaskRole(
+  seed: RgbColor,
+  avgColor: RgbColor,
+  pixels: Point2D[],
+  data: Uint8ClampedArray,
+  width: number,
+): ToothMaskRole {
+  if (isGumColor(seed.r, seed.g, seed.b)) return 'gum';
+  if (isGumColor(avgColor.r, avgColor.g, avgColor.b)) return 'gum';
+  const gumRatio = countGumPixels(pixels, data, width) / pixels.length;
+  return gumRatio >= GUM_PIXEL_RATIO ? 'gum' : 'tooth';
+}
+
+function selectGumMasksPerArch(masks: ColorToothMask[]): ColorToothMask[] {
+  const gums = masks.filter((mask) => mask.role === 'gum');
+  const pickLargest = (arch: 'upper' | 'lower') => {
+    const archGums = gums.filter((mask) => mask.arch === arch);
+    if (archGums.length === 0) return null;
+    return archGums.sort((left, right) => right.pixelCount - left.pixelCount)[0]!;
+  };
+
+  const upper = pickLargest('upper');
+  const lower = pickLargest('lower');
+  if (upper) upper.id = 'GUM-U';
+  if (lower) lower.id = 'GUM-L';
+  return [upper, lower].filter(Boolean) as ColorToothMask[];
 }
 
 function readPixel(data: Uint8ClampedArray, width: number, x: number, y: number): RgbColor {
@@ -107,6 +180,7 @@ function floodFillConnected(
   const pixels: Point2D[] = [];
   const colorSum = { r: 0, g: 0, b: 0 };
   const stack: number[] = [startY * width + startX];
+  const gumMode = isGumColor(seedColor.r, seedColor.g, seedColor.b);
 
   while (stack.length > 0) {
     const flat = stack.pop()!;
@@ -116,7 +190,11 @@ function floodFillConnected(
 
     const pixel = readPixel(data, width, x, y);
     if (isBackgroundPixel(pixel.r, pixel.g, pixel.b, backgroundThreshold)) continue;
-    if (colorDistanceSq(pixel, seedColor) > toleranceSq) continue;
+    if (gumMode) {
+      if (!isGumColor(pixel.r, pixel.g, pixel.b)) continue;
+    } else if (colorDistanceSq(pixel, seedColor) > toleranceSq) {
+      continue;
+    }
 
     visited[flat] = 1;
     pixels.push({ x, y });
@@ -308,7 +386,7 @@ export function extractToothMasksFromImageData(
         g: Math.round(colorSum.g / pixels.length),
         b: Math.round(colorSum.b / pixels.length),
       };
-      const role: ToothMaskRole = isGumColor(avgColor.r, avgColor.g, avgColor.b) ? 'gum' : 'tooth';
+      const role = classifyMaskRole(seed, avgColor, pixels, data, width);
 
       masks.push({
         id: 'pending',
@@ -327,10 +405,7 @@ export function extractToothMasksFromImageData(
 
   // Separate gums from teeth: teeth get capped per arch + numbered; gums kept as-is.
   const toothMasks = masks.filter((m) => m.role === 'tooth');
-  const gumMasks = masks
-    .filter((m) => m.role === 'gum')
-    .sort((a, b) => b.pixelCount - a.pixelCount)
-    .slice(0, MAX_GUMS);
+  const gumMasks = selectGumMasksPerArch(masks);
 
   const cappedTeeth = capArchMasks(toothMasks, maxTeethPerArch);
   cappedTeeth.sort((left, right) => {

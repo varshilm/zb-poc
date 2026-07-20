@@ -6,22 +6,26 @@ export const TEETH_GEMINI_API_KEY_STORAGE = 'teeth_gemini_api_key';
 export { DEFAULT_GEMINI_IMAGE_MODEL };
 
 /** Copy-paste prompt for Gemini, ChatGPT, or other image tools (external or API). */
-export const TEETH_COLOR_MASK_PROMPT = `Convert this dental photo into a flat 2D vector-style semantic segmentation map (not a photo).
+export const TEETH_COLOR_MASK_PROMPT = `Convert this dental photo into a flat 2D vector illustration (not a photo, not a diagram, not an infographic).
 
-Background: solid pure black (#000000), nothing else visible — no skin, no lips outside the mouth, no shadows.
+STRICT: the output must contain ONLY the mouth shapes filled with color, on a black background. No text, no numbers, no keys, no legends, no labels, no swatches, no captions anywhere in the image, including in corners or margins.
 
-Gums AND lips: paint as a single solid flat region using pure magenta (#FF00FF). No gradient, no texture — flat fill only, following the scalloped gumline shape.
+Background: solid pure black (#000000). Nothing else visible — no skin, no lips outside the mouth, no shadows.
 
-Teeth: paint each tooth as one flat solid fill using ONLY these colors, assigning them in order from left to right, upper arch then lower arch, reusing the list if there are more teeth than colors:
-#0057FF (blue), #FF8A00 (orange), #FFD500 (yellow), #00C853 (green), #8B4513 (brown), #FFB300 (gold), #00BCD4 (cyan), #7C4DFF (violet), #C0C0C0 (silver), #A0522D (rust)
+Gums AND lips: one single solid flat region filled with pure magenta #FF00FF. No gradient, no texture. Follow the natural scalloped gumline shape.
 
-Do not use any pink, red, or magenta tone anywhere except the gums/lips region.
+Teeth: each tooth filled with one flat solid color, hard edges, no shading. Assign colors in this exact order, left to right, upper arch then lower arch, repeating the sequence if there are more teeth than colors:
+#0057FF, #FF8A00, #FFD500, #00C853, #8B4513, #FFB300, #00BCD4, #7C4DFF, #C0C0C0, #A0522D
 
-Separate every tooth from its neighbor with a thin solid black outline (like a coloring-book line).
+Do not use pink, red, or magenta anywhere except the gums/lips region.
 
-Style: flat vector illustration / label map, hard edges, no shading, no gradients, no text, no numbers, no legend.
+Add a thin solid black outline between every tooth and its neighbor, like a coloring-book line.
 
-Output one image, same aspect ratio as input.`;
+Style: flat vector illustration, hard edges, no shading, no gradients.
+
+Final reminder: no text, no numbers, no legend, no key, no labels, no watermark — only the colored mouth shapes on black.
+
+Output one image, same aspect ratio as the input.`;
 
 const TEETH_SEGMENTATION_PROMPT = TEETH_COLOR_MASK_PROMPT;
 

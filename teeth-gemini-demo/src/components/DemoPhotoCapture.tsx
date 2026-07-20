@@ -224,12 +224,21 @@ export function DemoPhotoCapture({
             playsInline
             muted
           />
-        ) : (
-          <div className="absolute inset-0 flex w-full flex-col items-center justify-center gap-4 px-10 text-center text-white/70">
+        ) : isFaceScan ? (
+          <div className="flex flex-col items-center justify-center gap-4 px-10 text-center text-white/70">
             <div className="flex size-20 items-center justify-center rounded-full border border-white/25 bg-white/10">
               <Camera className="size-8" />
             </div>
-            <p className="mx-auto w-full max-w-[250px] text-center text-sm leading-5">
+            <p className="max-w-[250px] text-sm leading-5">
+              Open your front camera or upload a clear photo to begin.
+            </p>
+          </div>
+        ) : (
+          <div className="absolute inset-x-0 top-[56%] z-10 mx-auto flex aspect-4/3 w-[76%] max-h-[46%] -translate-y-1/2 flex-col items-center justify-center rounded-[28px] border border-white/40 px-6 text-center text-white/70 shadow-[0_0_0_999px_rgba(9,24,42,0.18)]">
+            <div className="flex size-20 items-center justify-center rounded-full border border-white/25 bg-white/10">
+              <Camera className="size-8" />
+            </div>
+            <p className="mt-4 max-w-[190px] text-sm leading-5">
               Open your front camera or upload a clear photo to begin.
             </p>
           </div>
@@ -242,9 +251,9 @@ export function DemoPhotoCapture({
             <span className="absolute bottom-0 left-0 size-12 rounded-bl-[18px] border-b-[3px] border-l-[3px] border-[#ff605c]" />
             <span className="absolute bottom-0 right-0 size-12 rounded-br-[18px] border-b-[3px] border-r-[3px] border-[#ff605c]" />
           </div>
-        ) : (
-          <div className="pointer-events-none absolute left-[12%] right-[12%] top-1/2 aspect-[4/3] max-h-[46%] -translate-y-1/2 rounded-[28px] border border-white/40 shadow-[0_0_0_999px_rgba(9,24,42,0.18)]" />
-        )}
+        ) : cameraActive ? (
+          <div className="pointer-events-none absolute inset-x-0 top-[56%] mx-auto aspect-4/3 w-[76%] max-h-[46%] -translate-y-1/2 rounded-[28px] border border-white/40 shadow-[0_0_0_999px_rgba(9,24,42,0.18)]" />
+        ) : null}
       </div>
 
       <section className="relative z-20 shrink-0 rounded-t-[30px] bg-brand-teal px-5 pb-5 pt-6 text-white">

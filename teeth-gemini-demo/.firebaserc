@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "zb-poc-26695"
-  }
+  },
+  "targets": {
+    "zb-poc-26695": {
+      "hosting": {
+        "prod": [
+          "zb-poc-26695"
+        ],
+        "dev": [
+          "zb-poc-dev"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }
