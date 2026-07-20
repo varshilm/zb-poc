@@ -26,10 +26,10 @@ type SliderRowProps = {
 
 function SliderRow({ label, value, min, max, step, onChange }: SliderRowProps) {
   return (
-    <label className="flex flex-col gap-2 text-sm text-slate-700">
+    <label className="flex flex-col gap-2 text-sm text-brand-navy">
       <span className="flex items-center justify-between">
         <span>{label}</span>
-        <span className="tabular-nums text-slate-500">{value}</span>
+        <span className="tabular-nums text-brand-sky">{value}</span>
       </span>
       <input
         type="range"
@@ -85,15 +85,15 @@ export function DemoPhotoAdjust({ imageUrl, onAdjusted, className }: DemoPhotoAd
 
   return (
     <div className={cn('flex flex-col gap-4', className)}>
-      <p className="text-sm text-slate-600">
+      <p className="text-sm leading-5 text-brand-sky">
         Tune brightness, contrast, and sharpness before sending to AI segmentation.
       </p>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+      <div className="overflow-hidden rounded-2xl border border-[#dce5e7] bg-[#f0f4f5]">
         <img src={previewUrl} alt="Adjusted preview" className="max-h-[40dvh] w-full object-contain" />
       </div>
 
-      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="space-y-4 rounded-2xl border border-[#dce5e7] bg-white p-4">
         <SliderRow
           label="Brightness"
           value={adjustments.brightness}
@@ -120,7 +120,7 @@ export function DemoPhotoAdjust({ imageUrl, onAdjusted, className }: DemoPhotoAd
         />
         <button
           type="button"
-          className="text-sm text-slate-600 underline"
+          className="text-sm text-brand-sky underline"
           onClick={() => setAdjustments(DEFAULT_IMAGE_ADJUSTMENTS)}
         >
           Reset adjustments
@@ -137,7 +137,7 @@ export function DemoPhotoAdjust({ imageUrl, onAdjusted, className }: DemoPhotoAd
         type="button"
         disabled={isExporting}
         onClick={() => void handleContinue()}
-        className="min-h-11 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+        className="min-h-12 rounded-full bg-brand-teal px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"
       >
         {isExporting ? 'Preparing image…' : 'Continue with this image'}
       </button>

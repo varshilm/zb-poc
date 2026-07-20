@@ -52,12 +52,12 @@ export function DemoPhotoCrop({ imageUrl, onCropped, className }: DemoPhotoCropP
 
   return (
     <div className={cn('flex flex-col gap-4', className)}>
-      <p className="text-sm text-slate-600">
+      <p className="text-sm leading-5 text-brand-sky">
         Choose a crop shape that best frames the teeth. The mouth outline follows the natural oval
         opening of a smile.
       </p>
 
-      <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+      <div className="flex rounded-2xl border border-[#dce5e7] bg-[#f0f4f5] p-1">
         {(['rectangle', 'mouth'] as const).map((shape) => (
           <button
             key={shape}
@@ -67,10 +67,10 @@ export function DemoPhotoCrop({ imageUrl, onCropped, className }: DemoPhotoCropP
               setError(null);
             }}
             className={cn(
-              'min-h-11 flex-1 rounded-lg px-3 text-sm font-medium transition-colors',
+              'min-h-11 flex-1 rounded-xl px-3 text-sm font-semibold transition-colors',
               cropShape === shape
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900',
+                ? 'bg-white text-brand-navy shadow-sm'
+                : 'text-brand-sky hover:text-brand-navy',
             )}
           >
             {DEMO_CROP_SHAPE_LABELS[shape]}
@@ -91,8 +91,8 @@ export function DemoPhotoCrop({ imageUrl, onCropped, className }: DemoPhotoCropP
                 className={cn(
                   'min-h-9 rounded-full border px-3 text-xs font-medium',
                   aspectPreset === preset.id
-                    ? 'border-slate-900 bg-slate-900 text-white'
-                    : 'border-slate-200 bg-white text-slate-600',
+                    ? 'border-brand-teal bg-brand-teal text-white'
+                    : 'border-[#dce5e7] bg-white text-brand-sky',
                 )}
               >
                 {preset.label}
@@ -112,7 +112,7 @@ export function DemoPhotoCrop({ imageUrl, onCropped, className }: DemoPhotoCropP
             />
           </div>
 
-          <label className="flex flex-col gap-2 text-sm text-slate-700">
+          <label className="flex flex-col gap-2 text-sm text-brand-navy">
             <span>Zoom</span>
             <input
               type="range"
@@ -135,7 +135,7 @@ export function DemoPhotoCrop({ imageUrl, onCropped, className }: DemoPhotoCropP
             type="button"
             disabled={isExporting}
             onClick={() => void handleApplyRectCrop()}
-            className="min-h-11 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            className="min-h-12 rounded-full bg-brand-teal px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"
           >
             {isExporting ? 'Cropping…' : 'Apply crop'}
           </button>

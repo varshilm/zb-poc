@@ -1,12 +1,14 @@
 import { useEffect } from 'react';
-import { LoaderCircle, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 import { TeethGeminiResultsView } from '@/features/geminiTeeth/TeethGeminiResultsView';
 import { useTeethMaskPipeline } from '@/features/geminiTeeth/useTeethMaskPipeline';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { setTeethCache } from '@/storage/demoCache';
 
 import { DemoUploadMaskButton } from './DemoUploadMaskButton';
+import { TwinLoader } from './TwinLoader';
 import { useDemoAutoSegment } from '../hooks/useDemoAutoSegment';
 
 type DemoResultsStepProps = {
@@ -15,6 +17,8 @@ type DemoResultsStepProps = {
   uploadedMaskUrl: string | null;
   onUploadedMask: (maskDataUrl: string) => void;
   onClearUploadedMask: () => void;
+  /** Start a brand-new capture → crop → adjust → results flow. */
+  onScanAgain?: () => void;
   className?: string;
 };
 
@@ -24,6 +28,7 @@ export function DemoResultsStep({
   uploadedMaskUrl,
   onUploadedMask,
   onClearUploadedMask,
+  onScanAgain,
   className,
 }: DemoResultsStepProps) {
   const useUploadedMask = Boolean(uploadedMaskUrl);
@@ -36,6 +41,14 @@ export function DemoResultsStep({
     void processMaskUrl(activeMaskUrl).catch(() => undefined);
   }, [activeMaskUrl, processMaskUrl]);
 
+  useEffect(() => {
+    if (!activeMaskUrl || !pipeline.maskResult) return;
+    void setTeethCache({
+      maskDataUrl: activeMaskUrl,
+      sourcePreviewUrl: sourcePreviewUrl || undefined,
+    });
+  }, [activeMaskUrl, pipeline.maskResult, sourcePreviewUrl]);
+
   const showSegmentFallback =
     !useUploadedMask &&
     (autoSegment.segmentError || (!autoSegment.isSegmenting && !autoSegment.maskDataUrl));
@@ -43,15 +56,17 @@ export function DemoResultsStep({
   const showProcessing =
     autoSegment.isSegmenting || (activeMaskUrl && pipeline.isProcessing && !pipeline.maskResult);
 
+  if (showProcessing) {
+    return (
+      <TwinLoader
+        compact
+        status={autoSegment.statusMessage ?? pipeline.statusMessage ?? 'Building your teeth preview'}
+      />
+    );
+  }
+
   return (
     <div className={cn('flex flex-col gap-4', className)}>
-      {showProcessing ? (
-        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-          <LoaderCircle className="size-4 animate-spin" />
-          {autoSegment.statusMessage ?? pipeline.statusMessage ?? 'Building 3D preview…'}
-        </div>
-      ) : null}
-
       {showSegmentFallback ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           <p>{autoSegment.segmentError ?? 'Segmentation did not complete.'}</p>
@@ -84,11 +99,21 @@ export function DemoResultsStep({
           />
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <p className="text-sm font-medium text-slate-800">Not happy with this preview?</p>
+            <p className="text-sm font-medium text-slate-800">Want a new scan?</p>
             <p className="mt-1 text-xs text-slate-600">
-              Upload a different color mask to replace the current segmentation.
+              Start over with a fresh photo, or swap in a different color mask.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
+              {onScanAgain ? (
+                <Button
+                  type="button"
+                  className="min-h-11 rounded-full bg-brand-teal text-white hover:bg-[#00565d]"
+                  onClick={onScanAgain}
+                >
+                  <RefreshCw className="size-4" />
+                  Scan again
+                </Button>
+              ) : null}
               <DemoUploadMaskButton
                 onMaskReady={onUploadedMask}
                 label="Upload a different mask"

@@ -27,6 +27,7 @@ export type UseFaceScanReturn = {
   scan: (photoDataUrl: string) => void;
   reset: () => void;
   preload: () => void;
+  seedResult: (result: FaceScanResult) => void;
 };
 
 function loadImageFromDataUrl(dataUrl: string): Promise<HTMLImageElement> {
@@ -111,5 +112,10 @@ export function useFaceScan(): UseFaceScanReturn {
     setState({ status: 'idle' });
   }, []);
 
-  return { state, scan, reset, preload };
+  const seedResult = useCallback((result: FaceScanResult) => {
+    runIdRef.current += 1;
+    setState({ status: 'done', result });
+  }, []);
+
+  return { state, scan, reset, preload, seedResult };
 }

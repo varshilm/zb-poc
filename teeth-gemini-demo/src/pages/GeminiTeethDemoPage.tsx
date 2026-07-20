@@ -1,8 +1,11 @@
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 
+import { BottomNav, type MainTab } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { DEBUG_ENABLED } from '@/config/debug';
+import { getTeethCache } from '@/storage/demoCache';
 
 import { DemoPhotoAdjust } from '../components/DemoPhotoAdjust';
 import { DemoPhotoCapture } from '../components/DemoPhotoCapture';
@@ -15,18 +18,95 @@ const STEPS = ['Capture', 'Crop', 'Adjust', 'Results'] as const;
 type GeminiTeethDemoPageProps = {
   /** When true (inside App tab layout) the per-page header is suppressed. */
   embedded?: boolean;
+  initialCaptureUrl?: string | null;
+  initialDebugMaskUrl?: string | null;
+  /** When false, skip auto-loading the 24h teeth mask cache (e.g. explicit new capture). */
+  preferCachedMask?: boolean;
+  onExit?: () => void;
+  onSelectTab?: (tab: MainTab) => void;
+  onOpenScan?: () => void;
 };
 
-export function GeminiTeethDemoPage({ embedded = false }: GeminiTeethDemoPageProps) {
-  const [stepIndex, setStepIndex] = useState(0);
-  const [captureUrl, setCaptureUrl] = useState<string | null>(null);
+function applyMaskRestore(
+  maskDataUrl: string,
+  sourcePreviewUrl: string | undefined,
+  setters: {
+    setCaptureUrl: (v: string | null) => void;
+    setCroppedUrl: (v: string | null) => void;
+    setAdjustedFile: (v: File | null) => void;
+    setAdjustedPreviewUrl: (v: string | null) => void;
+    setUploadedMaskUrl: (v: string | null) => void;
+    setResultsSessionKey: (fn: (key: number) => number) => void;
+    setStepIndex: (v: number) => void;
+  },
+) {
+  setters.setCaptureUrl(null);
+  setters.setCroppedUrl(null);
+  setters.setAdjustedFile(new File([], 'cached-color-mask.png', { type: 'image/png' }));
+  setters.setAdjustedPreviewUrl(sourcePreviewUrl ?? maskDataUrl);
+  setters.setUploadedMaskUrl(maskDataUrl);
+  setters.setResultsSessionKey((key) => key + 1);
+  setters.setStepIndex(3);
+}
+
+export function GeminiTeethDemoPage({
+  embedded = false,
+  initialCaptureUrl = null,
+  initialDebugMaskUrl = null,
+  preferCachedMask = true,
+  onExit,
+  onSelectTab,
+  onOpenScan,
+}: GeminiTeethDemoPageProps) {
+  const [stepIndex, setStepIndex] = useState(
+    initialDebugMaskUrl ? 3 : initialCaptureUrl ? 1 : 0,
+  );
+  const [captureUrl, setCaptureUrl] = useState<string | null>(initialCaptureUrl);
   const [croppedUrl, setCroppedUrl] = useState<string | null>(null);
-  const [adjustedFile, setAdjustedFile] = useState<File | null>(null);
-  const [adjustedPreviewUrl, setAdjustedPreviewUrl] = useState<string | null>(null);
-  const [uploadedMaskUrl, setUploadedMaskUrl] = useState<string | null>(null);
+  const [adjustedFile, setAdjustedFile] = useState<File | null>(() =>
+    initialDebugMaskUrl ? new File([], 'debug-color-mask.png', { type: 'image/png' }) : null,
+  );
+  const [adjustedPreviewUrl, setAdjustedPreviewUrl] = useState<string | null>(
+    initialDebugMaskUrl,
+  );
+  const [uploadedMaskUrl, setUploadedMaskUrl] = useState<string | null>(initialDebugMaskUrl);
   const [resultsSessionKey, setResultsSessionKey] = useState(0);
+  const [cacheChecked, setCacheChecked] = useState(
+    Boolean(initialDebugMaskUrl) || !preferCachedMask,
+  );
+
+  useEffect(() => {
+    if (initialDebugMaskUrl || !preferCachedMask) return undefined;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const cached = await getTeethCache();
+        if (cancelled) return;
+        if (cached?.maskDataUrl) {
+          applyMaskRestore(cached.maskDataUrl, cached.sourcePreviewUrl, {
+            setCaptureUrl,
+            setCroppedUrl,
+            setAdjustedFile,
+            setAdjustedPreviewUrl,
+            setUploadedMaskUrl,
+            setResultsSessionKey,
+            setStepIndex,
+          });
+        }
+      } finally {
+        if (!cancelled) setCacheChecked(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialDebugMaskUrl, preferCachedMask]);
 
   const currentStep = STEPS[stepIndex];
+  const showMainNav = Boolean(onSelectTab && onOpenScan);
+  const isResults = currentStep === 'Results';
 
   const canGoBack = stepIndex > 0;
   const canGoNext =
@@ -35,6 +115,11 @@ export function GeminiTeethDemoPage({ embedded = false }: GeminiTeethDemoPagePro
     (currentStep === 'Adjust' && Boolean(adjustedFile));
 
   const goBack = () => {
+    // Results back exits to home (same as header). Other steps step backward.
+    if (isResults) {
+      onExit?.();
+      return;
+    }
     if (canGoBack) {
       setStepIndex((index) => index - 1);
     }
@@ -54,47 +139,107 @@ export function GeminiTeethDemoPage({ embedded = false }: GeminiTeethDemoPagePro
     setResultsSessionKey((key) => key + 1);
   };
 
+  const startFreshScan = () => {
+    setCaptureUrl(null);
+    resetForNewCapture();
+    setStepIndex(0);
+  };
+
+  const nav = showMainNav ? (
+    <BottomNav
+      activeTab="scan"
+      onSelectTab={onSelectTab!}
+      onOpenScan={onOpenScan!}
+    />
+  ) : null;
+
+  if (!cacheChecked) {
+    return <div className="h-full min-h-0 bg-brand-canvas" />;
+  }
+
+  if (currentStep === 'Capture') {
+    return (
+      <div className="relative h-full min-h-0">
+        <DemoPhotoCapture
+          scanKind="teeth"
+          debugEnabled={DEBUG_ENABLED}
+          onBack={onExit}
+          className={showMainNav ? 'pb-24' : undefined}
+          onCaptured={(dataUrl) => {
+            setCaptureUrl(dataUrl);
+            resetForNewCapture();
+            setStepIndex(1);
+          }}
+          onDebugMaskUpload={(dataUrl) => {
+            applyMaskRestore(dataUrl, dataUrl, {
+              setCaptureUrl,
+              setCroppedUrl,
+              setAdjustedFile,
+              setAdjustedPreviewUrl,
+              setUploadedMaskUrl,
+              setResultsSessionKey,
+              setStepIndex,
+            });
+          }}
+        />
+        {nav}
+      </div>
+    );
+  }
+
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col">
+    <div className="relative flex h-full min-h-0 w-full flex-col bg-brand-canvas">
       {!embedded ? (
-        <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
-          <h1 className="text-lg font-semibold text-slate-900 sm:text-xl">Teeth 3D Preview</h1>
-          <p className="mt-1 text-xs text-slate-600 sm:text-sm">{DEMO_DISCLAIMER}</p>
+        <header className="border-b border-[#dde5e7] bg-white px-5 py-4">
+          <h1 className="text-lg font-semibold text-brand-navy">Teeth 3D Preview</h1>
+          <p className="mt-1 text-xs text-brand-sky">{DEMO_DISCLAIMER}</p>
         </header>
       ) : null}
 
-      <div className="px-4 py-3 sm:px-6">
-        <ol className="flex gap-1 overflow-x-auto pb-1">
+      <header className="app-safe-top bg-brand-canvas px-5 pt-8">
+        <div className="flex items-center gap-3 pt-1">
+          <button
+            type="button"
+            onClick={onExit}
+            aria-label="Back to home"
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white text-brand-navy shadow-sm"
+          >
+            <ArrowLeft className="size-5" />
+          </button>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-brand-teal">
+              Teeth scan
+            </p>
+            <h1 className="text-xl font-bold text-brand-navy">{currentStep}</h1>
+          </div>
+        </div>
+
+        <ol className="mt-4 flex gap-2 overflow-x-auto pb-1">
           {STEPS.map((step, index) => (
             <li
               key={step}
               className={cn(
-                'shrink-0 rounded-full px-3 py-1 text-xs font-medium',
+                'shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold',
                 index === stepIndex
-                  ? 'bg-slate-900 text-white'
+                  ? 'bg-brand-teal text-white'
                   : index < stepIndex
-                    ? 'bg-slate-200 text-slate-700'
-                    : 'bg-white text-slate-400',
+                    ? 'bg-[#dcebec] text-brand-teal'
+                    : 'bg-white text-brand-sky',
               )}
             >
               {step}
             </li>
           ))}
         </ol>
-      </div>
+      </header>
 
-      <main className="flex-1 px-4 pb-28 sm:px-6">
-        <div className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          {currentStep === 'Capture' ? (
-            <DemoPhotoCapture
-              onCaptured={(dataUrl) => {
-                setCaptureUrl(dataUrl);
-                resetForNewCapture();
-                setStepIndex(1);
-              }}
-            />
-          ) : null}
-
+      <main
+        className={cn(
+          'min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 pt-4',
+          showMainNav ? (isResults ? 'app-nav-clearance' : 'pb-44') : 'pb-28',
+        )}
+      >
+        <div className="rounded-[24px] border border-[#e0e7e9] bg-white p-4 shadow-[0_10px_32px_rgba(33,64,96,0.08)]">
           {currentStep === 'Crop' && captureUrl ? (
             <DemoPhotoCrop
               imageUrl={captureUrl}
@@ -130,36 +275,44 @@ export function GeminiTeethDemoPage({ embedded = false }: GeminiTeethDemoPagePro
               uploadedMaskUrl={uploadedMaskUrl}
               onUploadedMask={setUploadedMaskUrl}
               onClearUploadedMask={() => setUploadedMaskUrl(null)}
+              onScanAgain={startFreshScan}
             />
           ) : null}
         </div>
       </main>
 
-      <footer className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
-        <div className="mx-auto flex max-w-3xl gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11 flex-1"
-            disabled={!canGoBack}
-            onClick={goBack}
-          >
-            <ChevronLeft className="size-4" />
-            Back
-          </Button>
-          {currentStep !== 'Results' ? (
+      {/* Step footer only for Crop/Adjust — Results uses in-content Scan again + header back. */}
+      {!isResults ? (
+        <footer
+          className={cn(
+            'absolute inset-x-0 border-t border-[#dde5e7] bg-white/95 px-5 pt-3 backdrop-blur',
+            showMainNav ? 'bottom-[4.75rem]' : 'app-safe-bottom bottom-0',
+          )}
+        >
+          <div className="flex gap-3 pb-3">
             <Button
               type="button"
-              className="min-h-11 flex-1"
-              disabled={!canGoNext || currentStep === 'Capture'}
+              variant="outline"
+              className="min-h-12 flex-1 rounded-full border-[#cad8db] text-brand-navy"
+              disabled={!canGoBack}
+              onClick={goBack}
+            >
+              <ChevronLeft className="size-4" />
+              Back
+            </Button>
+            <Button
+              type="button"
+              className="min-h-12 flex-1 rounded-full bg-brand-teal text-white hover:bg-[#00565d]"
+              disabled={!canGoNext}
               onClick={goNext}
             >
               Next
               <ChevronRight className="size-4" />
             </Button>
-          ) : null}
-        </div>
-      </footer>
+          </div>
+        </footer>
+      ) : null}
+      {nav}
     </div>
   );
 }

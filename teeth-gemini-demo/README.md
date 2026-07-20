@@ -45,7 +45,9 @@ The jaw estimate is sensitive to camera angle, lighting, glasses, image resoluti
 ## Architecture and data flow
 
 ```text
-src/App.tsx
+src/App.tsx → RouterProvider (src/routes/)
+├── /onboarding, /login, /home, /shop
+├── /scan → /scan/teeth | /scan/face
 ├── Teeth Preview
 │   ├── pages/GeminiTeethDemoPage.tsx       step orchestration
 │   ├── components/DemoPhoto*.tsx           capture, crop, adjust
@@ -62,7 +64,7 @@ src/App.tsx
 
 Important implementation details:
 
-- Navigation is local React state; there is no router or backend-owned session.
+- Navigation uses `react-router-dom` with typed paths in `src/routes/paths.ts`. Demo email lives in `DemoSessionProvider` (sessionStorage).
 - Photos, masks, contours, and meshes stay in browser memory as files, data URLs, canvas pixels, and Three.js objects.
 - The default segmentation provider is the compile-time constant `DEMO_TEETH_SEGMENT_PROVIDER` in `src/constants/demoConfig.ts`; it is not selectable in the UI.
 - OpenAI and Gemini provider modules normalize errors into `TeethSegmentationError` codes and retry rate limits.
@@ -81,6 +83,7 @@ Create `.env` from [`.env.example`](.env.example). Vite exposes all `VITE_*` val
 | `VITE_OPENAI_IMAGE_MODEL` | OpenAI image model | `gpt-image-1` |
 | `VITE_GEMINI_API_KEY` | Gemini API key when the provider constant is `gemini` | empty |
 | `VITE_GEMINI_IMAGE_MODEL` | Gemini image model | `gemini-2.0-flash-exp` |
+| `VITE_DEBUG` | Shows a direct color-mask upload that skips the AI request | `false` |
 | `VITE_ENABLE_TEETH_ML` | Enables the optional reconstruction client configuration | `false` |
 | `VITE_TEETH_RECON_API_URL` | Reconstruction service base URL | `http://localhost:5001` |
 | `VITE_TEETH_DREAMER_API_URL` | Reserved TeethDreamer service URL | empty |

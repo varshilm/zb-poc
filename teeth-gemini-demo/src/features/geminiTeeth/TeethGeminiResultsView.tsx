@@ -50,12 +50,7 @@ export function TeethGeminiResultsView({
       ) : null}
 
       {hasPreviews ? (
-        <div
-          className={cn(
-            'grid gap-3',
-            showSourcePanel ? 'sm:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2',
-          )}
-        >
+        <div className="grid grid-cols-1 gap-3">
           {showSourcePanel ? (
             <figure className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
               <figcaption className="border-b border-slate-200 px-3 py-2 text-xs font-medium text-slate-600">

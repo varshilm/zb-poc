@@ -12,5 +12,10 @@ export default defineConfig({
   },
   server: {
     port: 5174,
+    watch: {
+      // Jest coverage HTML rewrites were forcing full page reloads and breaking
+      // lazy route imports ("Failed to fetch dynamically imported module").
+      ignored: ['**/coverage/**', '**/node_modules/**'],
+    },
   },
 });

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 
 import { buildGeminiGlassTeethScene } from '@/pages/TeethModeling/rendering/geminiMaskTo3D';
 import type { ColorMaskSeparationResult } from '@/pages/TeethModeling/utils/colorMaskSeparation';
+import { getTeeth3dMaterialPreset, TEETH_3D_STYLE } from '@/config/teeth3dStyle';
 
 const MODEL_SCALE = 1.85;
 
@@ -38,8 +39,9 @@ export function useTeethGemini3DScene({ maskResult, segmentedImageUrl }: UseTeet
       ]);
       if (cancelled) return;
 
+      const preset = getTeeth3dMaterialPreset();
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color('#e8edf5');
+      scene.background = new THREE.Color(preset.background);
 
       const TARGET_Y = -0.02;
       let orthoHeight = 0.42;
@@ -49,13 +51,19 @@ export function useTeethGemini3DScene({ maskResult, segmentedImageUrl }: UseTeet
 
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.toneMapping = THREE.LinearToneMapping;
-      renderer.toneMappingExposure = 1.0;
+      // Classic keeps LinearToneMapping so pink gums stay saturated; homescreen uses ACES.
+      renderer.toneMapping =
+        TEETH_3D_STYLE === 'homescreen'
+          ? THREE.ACESFilmicToneMapping
+          : THREE.LinearToneMapping;
+      renderer.toneMappingExposure = preset.toneMappingExposure;
       mount.appendChild(renderer.domElement);
 
       const pmrem = new THREE.PMREMGenerator(renderer);
-      const envTexture = pmrem.fromScene(new RoomEnvironment(), 0.15).texture;
+      const envTexture = pmrem.fromScene(new RoomEnvironment(), preset.envBlur).texture;
       scene.environment = envTexture;
+      scene.environmentIntensity =
+        TEETH_3D_STYLE === 'homescreen' ? preset.envIntensity : 0.85;
 
       const controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
@@ -65,15 +73,15 @@ export function useTeethGemini3DScene({ maskResult, segmentedImageUrl }: UseTeet
       controls.target.set(0, TARGET_Y, 0);
       controls.update();
 
-      scene.add(new THREE.HemisphereLight(0xffffff, 0xdde4ef, 0.7));
-      const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
-      keyLight.position.set(0.3, 1.0, 1.6);
+      scene.add(new THREE.HemisphereLight(0xffffff, 0xdde4ef, preset.hemiIntensity));
+      const keyLight = new THREE.DirectionalLight(preset.keyColor, preset.keyIntensity);
+      keyLight.position.set(0.3, 1.0, 1.55);
       scene.add(keyLight);
-      const fillLight = new THREE.DirectionalLight(0xfff8ee, 0.5);
-      fillLight.position.set(-1.4, 0.3, 0.8);
+      const fillLight = new THREE.DirectionalLight(preset.fillColor, preset.fillIntensity);
+      fillLight.position.set(-1.35, 0.3, 0.8);
       scene.add(fillLight);
-      const rimLight = new THREE.DirectionalLight(0xdbeafe, 0.3);
-      rimLight.position.set(0, -0.5, -1);
+      const rimLight = new THREE.DirectionalLight(preset.rimColor, preset.rimIntensity);
+      rimLight.position.set(0, -0.45, -1);
       scene.add(rimLight);
 
       const root = new THREE.Group();

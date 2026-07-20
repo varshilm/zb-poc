@@ -1,4 +1,5 @@
 import type { ColorToothMask, RgbColor } from '../utils/colorMaskSeparation';
+import { getTeeth3dMaterialPreset, TEETH_3D_STYLE } from '@/config/teeth3dStyle';
 
 type ThreeModule = typeof import('three');
 type Group = import('three').Group;
@@ -170,11 +171,27 @@ function buildToothCrop(
   return { alphaTexture, insideMask, cropWidth, cropHeight, cropMinX: minX, cropMinY: minY };
 }
 
-/** Bright warm-white enamel — reads cleanly on the light background. */
-const GLASS_WHITE = 0xf5f8ff;
-/** Realistic gingiva pink for gum regions. */
-const GUM_PINK = 0xd97a89;
-const GUM_EMISSIVE = 0x9e3050;
+/** Bright warm-white enamel — reads cleanly on the light background (classic preset). */
+const MATERIAL = getTeeth3dMaterialPreset();
+const GLASS_WHITE = MATERIAL.glassColor;
+/** Gingiva color for gum regions. */
+const GUM_PINK = MATERIAL.gumColor;
+const GUM_EMISSIVE = MATERIAL.gumEmissive;
+const GUM_EMISSIVE_INTENSITY = MATERIAL.gumEmissiveIntensity;
+const GLASS_TRANSMISSION = MATERIAL.transmission;
+const GLASS_OPACITY = MATERIAL.opacity;
+const GLASS_OPACITY_FALLBACK = MATERIAL.opacityFallback;
+const GLASS_ROUGHNESS = MATERIAL.roughness;
+const GLASS_CLEARCOAT = MATERIAL.clearcoat;
+const GLASS_CLEARCOAT_ROUGHNESS = MATERIAL.clearcoatRoughness;
+const GLASS_IOR = MATERIAL.ior;
+const GLASS_THICKNESS_SCALE = MATERIAL.thicknessScale;
+const GLASS_SPECULAR = MATERIAL.specularIntensity;
+const GLASS_ATTENUATION_COLOR = MATERIAL.attenuationColor;
+const GLASS_ATTENUATION_DISTANCE = MATERIAL.attenuationDistance;
+const GLASS_SHEEN = MATERIAL.sheen;
+const GLASS_SHEEN_COLOR = MATERIAL.sheenColor;
+const GLASS_SHEEN_ROUGHNESS = MATERIAL.sheenRoughness;
 
 /** Small floating number label for a tooth (dark text with a light halo). */
 function buildLabelSprite(THREE: ThreeModule, label: string): import('three').Sprite {
@@ -383,44 +400,70 @@ export function buildGeminiGlassTeethScene(
 
     let material: import('three').Material;
     if (isGum) {
-      // Soft matte pink gingiva
+      // Soft matte gingiva (classic pink). Keep env influence low so RoomEnvironment
+      // does not wash the gum band toward white.
       material = new THREE.MeshStandardMaterial({
         color: GUM_PINK,
         alphaMap: alphaTexture,
         transparent: true,
         alphaTest: 0.5,
-        roughness: 0.65,
+        roughness: 0.72,
         metalness: 0,
         emissive: GUM_EMISSIVE,
-        emissiveIntensity: 0.22,
+        emissiveIntensity: GUM_EMISSIVE_INTENSITY,
+        envMapIntensity: TEETH_3D_STYLE === 'homescreen' ? 0.35 : 0.12,
         side: THREE.DoubleSide,
       });
     } else if (Physical) {
-      // Clear-aligner enamel: slightly translucent white that reads bright on a
-      // light background. Lower transmission keeps the crown body clearly visible.
-      material = new Physical({
-        color: GLASS_WHITE,
-        alphaMap: alphaTexture,
-        transparent: true,
-        alphaTest: 0.5,
-        opacity: 1.0,
-        roughness: 0.1,
-        metalness: 0,
-        transmission: 0.45,
-        thickness: crownDepth * 2.0,
-        ior: 1.42,
-        clearcoat: 1,
-        clearcoatRoughness: 0.08,
-        side: THREE.DoubleSide,
-      });
+      if (TEETH_3D_STYLE === 'homescreen') {
+        // Rubbery transparent glass: soft sheen + frosted clearcoat + transmission.
+        material = new Physical({
+          color: GLASS_WHITE,
+          alphaMap: alphaTexture,
+          transparent: true,
+          alphaTest: 0.5,
+          opacity: GLASS_OPACITY,
+          roughness: GLASS_ROUGHNESS,
+          metalness: 0,
+          transmission: GLASS_TRANSMISSION,
+          thickness: crownDepth * GLASS_THICKNESS_SCALE,
+          ior: GLASS_IOR,
+          clearcoat: GLASS_CLEARCOAT,
+          clearcoatRoughness: GLASS_CLEARCOAT_ROUGHNESS,
+          specularIntensity: GLASS_SPECULAR,
+          attenuationColor: GLASS_ATTENUATION_COLOR,
+          attenuationDistance: GLASS_ATTENUATION_DISTANCE,
+          sheen: GLASS_SHEEN,
+          sheenColor: GLASS_SHEEN_COLOR,
+          sheenRoughness: GLASS_SHEEN_ROUGHNESS,
+          side: THREE.DoubleSide,
+        });
+      } else {
+        // Classic clear-aligner enamel — unchanged from the pre-homescreen look.
+        material = new Physical({
+          color: GLASS_WHITE,
+          alphaMap: alphaTexture,
+          transparent: true,
+          alphaTest: 0.5,
+          opacity: 1.0,
+          roughness: 0.1,
+          metalness: 0,
+          transmission: 0.45,
+          thickness: crownDepth * 2.0,
+          ior: 1.42,
+          clearcoat: 1,
+          clearcoatRoughness: 0.08,
+          side: THREE.DoubleSide,
+        });
+      }
     } else {
       material = new THREE.MeshStandardMaterial({
         color: GLASS_WHITE,
         alphaMap: alphaTexture,
         transparent: true,
         alphaTest: 0.5,
-        opacity: 0.92,
-        roughness: 0.12,
+        opacity: GLASS_OPACITY_FALLBACK,
+        roughness: TEETH_3D_STYLE === 'homescreen' ? GLASS_ROUGHNESS : 0.12,
         metalness: 0,
         side: THREE.DoubleSide,
       });

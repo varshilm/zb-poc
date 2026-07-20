@@ -6,21 +6,22 @@ export const TEETH_GEMINI_API_KEY_STORAGE = 'teeth_gemini_api_key';
 export { DEFAULT_GEMINI_IMAGE_MODEL };
 
 /** Copy-paste prompt for Gemini, ChatGPT, or other image tools (external or API). */
-export const TEETH_COLOR_MASK_PROMPT = `Transform this dental photo into a flat instance-segmentation mask image.
+export const TEETH_COLOR_MASK_PROMPT = `Convert this dental photo into a flat 2D vector-style semantic segmentation map (not a photo).
 
-Critical requirements — follow exactly:
-1. Background: pure solid black (#000000) — no gradients, no shadows, no skin
-2. Each individual tooth = one unique, fully saturated solid color — completely flat, no shading or gradients inside the region
-3. A small black gap (1 px) must visibly separate every adjacent tooth — teeth must NOT overlap
-4. Paint the GUMS (gingiva) as ONE solid pure magenta (#FF00FF) — upper gum and lower gum both magenta — following the natural scalloped gum line that hugs each tooth
-5. If LIPS are visible around the mouth, paint them the SAME pure magenta (#FF00FF) as the gums — treat lips as part of the gum region so they merge into one magenta area
-6. Only use shades of blue, orange, yellow, green, brown, gold but not family of pink and red — magenta is reserved exclusively for gums and lips so they can be separated from teeth
-7. Both upper and lower arches must be fully segmented when visible
-8. Use highly distinct hues for every tooth — never repeat a color or use similar shades for neighbors
-9. Do NOT add: text, numbers, labels, outlines, borders, legends, or annotations of any kind
-10. Output exactly one image in the same aspect ratio as the input
+Background: solid pure black (#000000), nothing else visible — no skin, no lips outside the mouth, no shadows.
 
-Style reference: flat vector semantic segmentation label map — each tooth a single pure color, gums and lips pure magenta (#FF00FF), everything on solid black.`;
+Gums AND lips: paint as a single solid flat region using pure magenta (#FF00FF). No gradient, no texture — flat fill only, following the scalloped gumline shape.
+
+Teeth: paint each tooth as one flat solid fill using ONLY these colors, assigning them in order from left to right, upper arch then lower arch, reusing the list if there are more teeth than colors:
+#0057FF (blue), #FF8A00 (orange), #FFD500 (yellow), #00C853 (green), #8B4513 (brown), #FFB300 (gold), #00BCD4 (cyan), #7C4DFF (violet), #C0C0C0 (silver), #A0522D (rust)
+
+Do not use any pink, red, or magenta tone anywhere except the gums/lips region.
+
+Separate every tooth from its neighbor with a thin solid black outline (like a coloring-book line).
+
+Style: flat vector illustration / label map, hard edges, no shading, no gradients, no text, no numbers, no legend.
+
+Output one image, same aspect ratio as input.`;
 
 const TEETH_SEGMENTATION_PROMPT = TEETH_COLOR_MASK_PROMPT;
 
