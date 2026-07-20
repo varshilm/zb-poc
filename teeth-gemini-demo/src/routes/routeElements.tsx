@@ -4,7 +4,6 @@ import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AppShell } from '@/components/AppShell';
 import { AppLoader } from '@/components/AppLoader';
 import { SplashScreen } from '@/components/SplashScreen';
-import { getFaceCache } from '@/storage/demoCache';
 import { useDemoSession } from '@/session/DemoSessionContext';
 
 import {
@@ -136,21 +135,7 @@ export function ProgressRoute() {
       onOpenScan={() => navigate(paths.scan)}
       onOpenAccount={() => navigate(paths.account)}
       onOpenTeethResult={() => navigate(paths.scanTeeth)}
-      onOpenFaceResult={() => {
-        void (async () => {
-          const cached = await getFaceCache();
-          if (!cached) {
-            navigate(paths.scanFace);
-            return;
-          }
-          navigate(paths.scanFace, {
-            state: {
-              photoDataUrl: cached.photoDataUrl,
-              result: cached.result,
-            } satisfies ScanFaceLocationState,
-          });
-        })();
-      }}
+      onOpenFaceResult={() => navigate(paths.scanFace)}
     />
   );
 }

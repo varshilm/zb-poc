@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ChevronLeft, RotateCcw, ScanFace, AlertCircle } from 'lucide-react';
 
+import { AppLoader } from '@/components/AppLoader';
 import { BottomNav, type MainTab } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { setFaceCache } from '@/storage/demoCache';
+import { getFaceCache, setFaceCache } from '@/storage/demoCache';
 
 import { FaceLandmarkOverlay } from '../components/FaceLandmarkOverlay';
 import { FaceMesh3DView } from '../components/FaceMesh3DView';
@@ -28,6 +29,8 @@ type JawFitScanPageProps = {
   initialPhotoDataUrl?: string | null;
   /** When set with a photo, restores results without re-running MediaPipe. */
   initialResult?: FaceScanResult | null;
+  /** When false, skip auto-loading the 24h face scan cache (e.g. explicit new capture). */
+  preferCachedResult?: boolean;
   onExit?: () => void;
   onSelectTab?: (tab: MainTab) => void;
   onOpenScan?: () => void;
@@ -36,6 +39,7 @@ type JawFitScanPageProps = {
 export function JawFitScanPage({
   initialPhotoDataUrl = null,
   initialResult = null,
+  preferCachedResult = true,
   onExit,
   onSelectTab,
   onOpenScan,
@@ -44,6 +48,9 @@ export function JawFitScanPage({
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(initialPhotoDataUrl);
   const [visualTab, setVisualTab] = useState<VisualTab>('overlay');
   const initialScanStartedRef = useRef(false);
+  const [cacheChecked, setCacheChecked] = useState(
+    Boolean(initialResult) || !preferCachedResult,
+  );
   const showMainNav = Boolean(onSelectTab && onOpenScan);
 
   // Pre-load MediaPipe WASM when the page mounts so there's no delay on submit.
@@ -51,6 +58,29 @@ export function JawFitScanPage({
     preload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (initialResult || !preferCachedResult) return undefined;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const cached = await getFaceCache();
+        if (cancelled) return;
+        if (cached?.photoDataUrl && cached.result) {
+          initialScanStartedRef.current = true;
+          setPhotoDataUrl(cached.photoDataUrl);
+          seedResult(cached.result);
+        }
+      } finally {
+        if (!cancelled) setCacheChecked(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialResult, preferCachedResult, seedResult]);
 
   useEffect(() => {
     if (initialScanStartedRef.current) return;
@@ -90,9 +120,17 @@ export function JawFitScanPage({
     <BottomNav activeTab="scan" onSelectTab={onSelectTab!} onOpenScan={onOpenScan!} />
   ) : null;
 
+  if (!cacheChecked) {
+    return (
+      <div className="flex h-full min-h-0 items-center justify-center bg-brand-canvas">
+        <AppLoader size="lg" label="Restoring your last scan…" centered />
+      </div>
+    );
+  }
+
   if (isCapture) {
     return (
-      <div className="relative h-full min-h-0">
+      <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
         <DemoPhotoCapture
           scanKind="face"
           orientation="portrait"
@@ -107,7 +145,7 @@ export function JawFitScanPage({
 
   if (isProcessing) {
     return (
-      <div className="relative h-full min-h-0">
+      <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
         <TwinLoader
           status={
             state.status === 'loading-model'
@@ -122,8 +160,8 @@ export function JawFitScanPage({
   }
 
   return (
-    <div className="relative h-full min-h-0 overflow-y-auto bg-brand-canvas">
-      <div className="app-safe-top px-5 pt-8">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-brand-canvas">
+      <header className="app-safe-top shrink-0 px-5 pt-8">
         <div className="flex items-center gap-3 pt-1">
           <button
             type="button"
@@ -141,9 +179,14 @@ export function JawFitScanPage({
             </p>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className={cn('px-5 pt-4', showMainNav ? 'app-nav-clearance' : 'pb-12')}>
+      <main
+        className={cn(
+          'min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 pt-4',
+          showMainNav ? 'app-nav-clearance' : 'pb-12',
+        )}
+      >
         {/* Step indicator */}
         <div className="mb-4 flex items-center gap-2">
           {(['Capture', 'Results'] as const).map((step, i) => {
@@ -289,7 +332,7 @@ export function JawFitScanPage({
             </Button>
           </div>
         )}
-      </div>
+      </main>
       {nav}
     </div>
   );
